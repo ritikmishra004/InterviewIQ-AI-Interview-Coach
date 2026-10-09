@@ -1,0 +1,201 @@
+
+{
+  "questions": [
+    {
+      "question_id": "python_001",
+      "topic": "Python",
+      "difficulty": "Easy",
+      "question_type": "conceptual",
+      "question": "What is the difference between a list and a tuple in Python?"
+    },
+    {
+      "question_id": "python_002",
+      "topic": "Python",
+      "difficulty": "Easy",
+      "question_type": "conceptual",
+      "question": "What are mutable and immutable objects in Python?"
+    },
+    {
+      "question_id": "python_003",
+      "topic": "Python",
+      "difficulty": "Medium",
+      "question_type": "coding",
+      "question": "Write a Python function to check whether a string is a palindrome. Explain your approach."
+    },
+    {
+      "question_id": "python_004",
+      "topic": "Python",
+      "difficulty": "Medium",
+      "question_type": "coding",
+      "question": "Write a Python function that returns the frequency of each element in a list."
+    },
+    {
+      "question_id": "statistics_001",
+      "topic": "Statistics",
+      "difficulty": "Easy",
+      "question_type": "conceptual",
+      "question": "What is the difference between mean, median, and mode?"
+    },
+    {
+      "question_id": "statistics_002",
+      "topic": "Statistics",
+      "difficulty": "Medium",
+      "question_type": "conceptual",
+      "question": "Explain Bayes' theorem and describe one practical application."
+    },
+    {
+      "question_id": "statistics_003",
+      "topic": "Statistics",
+      "difficulty": "Medium",
+      "question_type": "conceptual",
+      "question": "What is the difference between correlation and causation?"
+    },
+    {
+      "question_id": "ml_001",
+      "topic": "Machine Learning",
+      "difficulty": "Easy",
+      "question_type": "conceptual",
+      "question": "What is overfitting in machine learning?"
+    },
+    {
+      "question_id": "ml_002",
+      "topic": "Machine Learning",
+      "difficulty": "Easy",
+      "question_type": "conceptual",
+      "question": "Explain the difference between supervised and unsupervised learning."
+    },
+    {
+      "question_id": "ml_003",
+      "topic": "Machine Learning",
+      "difficulty": "Medium",
+      "question_type": "conceptual",
+      "question": "What is the bias-variance trade-off?"
+    },
+    {
+      "question_id": "ml_004",
+      "topic": "Machine Learning",
+      "difficulty": "Medium",
+      "question_type": "conceptual",
+      "question": "What is cross-validation, and why is it useful?"
+    },
+    {
+      "question_id": "ml_005",
+      "topic": "Machine Learning",
+      "difficulty": "Hard",
+      "question_type": "conceptual",
+      "question": "How would you handle a highly imbalanced classification dataset?"
+    },
+    {
+      "question_id": "dl_001",
+      "topic": "Deep Learning",
+      "difficulty": "Easy",
+      "question_type": "conceptual",
+      "question": "What is the role of an activation function in a neural network?"
+    },
+    {
+      "question_id": "dl_002",
+      "topic": "Deep Learning",
+      "difficulty": "Medium",
+      "question_type": "conceptual",
+      "question": "Explain backpropagation and how it helps train a neural network."
+    },
+    {
+      "question_id": "dl_003",
+      "topic": "Deep Learning",
+      "difficulty": "Medium",
+      "question_type": "conceptual",
+      "question": "What is the difference between batch normalization and layer normalization?"
+    },
+    {
+      "question_id": "nlp_001",
+      "topic": "NLP",
+      "difficulty": "Easy",
+      "question_type": "conceptual",
+      "question": "What is tokenization in natural language processing?"
+    },
+    {
+      "question_id": "nlp_002",
+      "topic": "NLP",
+      "difficulty": "Medium",
+      "question_type": "conceptual",
+      "question": "What are word embeddings, and why are they useful?"
+    },
+    {
+      "question_id": "llm_001",
+      "topic": "LLM and Generative AI",
+      "difficulty": "Easy",
+      "question_type": "conceptual",
+      "question": "What does it mean that a large language model predicts the next token?"
+    },
+    {
+      "question_id": "llm_002",
+      "topic": "LLM and Generative AI",
+      "difficulty": "Medium",
+      "question_type": "conceptual",
+      "question": "What is the difference between pretraining and fine-tuning an LLM?"
+    },
+    {
+      "question_id": "llm_003",
+      "topic": "LLM and Generative AI",
+      "difficulty": "Medium",
+      "question_type": "conceptual",
+      "question": "What is temperature in LLM text generation, and how does it affect the output?"
+    },
+    {
+      "question_id": "rag_001",
+      "topic": "RAG",
+      "difficulty": "Easy",
+      "question_type": "conceptual",
+      "question": "What is Retrieval-Augmented Generation, and why is it used?"
+    },
+    {
+      "question_id": "rag_002",
+      "topic": "RAG",
+      "difficulty": "Medium",
+      "question_type": "conceptual",
+      "question": "Explain the roles of chunking, embeddings, vector search, and generation in a RAG pipeline."
+    },
+    {
+      "question_id": "mcp_001",
+      "topic": "MCP",
+      "difficulty": "Easy",
+      "question_type": "conceptual",
+      "question": "What is the Model Context Protocol, and what problem does it solve?"
+    },
+    {
+      "question_id": "mcp_002",
+      "topic": "MCP",
+      "difficulty": "Medium",
+      "question_type": "conceptual",
+      "question": "Explain the roles of an MCP host, client, and server."
+    },
+    {
+      "question_id": "agentic_001",
+      "topic": "Agentic AI",
+      "difficulty": "Easy",
+      "question_type": "conceptual",
+      "question": "What is an AI agent, and how does it differ from a basic LLM chatbot?"
+    },
+    {
+      "question_id": "agentic_002",
+      "topic": "Agentic AI",
+      "difficulty": "Medium",
+      "question_type": "conceptual",
+      "question": "What is the role of tools and state in a LangGraph workflow?"
+    },
+    {
+      "question_id": "ai_engineering_001",
+      "topic": "AI Engineering",
+      "difficulty": "Medium",
+      "question_type": "conceptual",
+      "question": "What are common challenges when deploying an LLM-powered application in production?"
+    },
+    {
+      "question_id": "ai_engineering_002",
+      "topic": "AI Engineering",
+      "difficulty": "Hard",
+      "question_type": "conceptual",
+      "question": "How would you evaluate the quality, latency, and cost of an LLM-powered application?"
+    }
+  ]
+}

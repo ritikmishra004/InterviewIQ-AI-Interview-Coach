@@ -1,0 +1,10 @@
+fastapi
+uvicorn[standard]
+pydantic
+langchain
+langchain-core
+langchain-ollama
+langgraph
+ddgs
+pytest
+httpx
