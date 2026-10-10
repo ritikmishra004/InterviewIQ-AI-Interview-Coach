@@ -32,7 +32,8 @@ import {
   RotateCcw,
 } from "lucide-react";
 
-const API_BASE = "http://127.0.0.1:8000/api";
+const API_BASE =
+  import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000/api";
 
 const FALLBACK_TOPICS = [
   "Python",
@@ -139,6 +140,11 @@ function App() {
   const [completed, setCompleted] = useState(false);
   const [mobileMenu, setMobileMenu] = useState(false);
 
+  // Strands Decider 2B & Adaptive Clarification state
+  const [deciderResult, setDeciderResult] = useState(null);
+  const [clarificationData, setClarificationData] = useState(null);
+  const [redirectNotice, setRedirectNotice] = useState(null);
+
   async function refreshDashboard() {
     try {
       const [statsResult, historyResult] = await Promise.allSettled([
@@ -213,6 +219,9 @@ function App() {
       setCurrentQuestion(data.first_question);
       setAnswer("");
       setEvaluation(null);
+      setDeciderResult(null);
+      setClarificationData(null);
+      setRedirectNotice(null);
       setPendingQuestion(null);
       setEvaluations([]);
       setCompleted(false);
@@ -246,15 +255,41 @@ function App() {
           session_id: sessionId,
           question_id: currentQuestion.question_id,
           answer: answer.trim(),
+          is_clarification_response: Boolean(clarificationData),
         }),
       });
 
-      const result = data.evaluation;
+      if (data.decider) {
+        setDeciderResult(data.decider);
+      }
 
+      if (data.action === "REDIRECT") {
+        setRedirectNotice(data.redirect_message || "Please provide a relevant answer to proceed.");
+        setClarificationData(null);
+        setEvaluation(null);
+        return;
+      }
+
+      if (data.action === "ASK_CLARIFICATION") {
+        setClarificationData({
+          question: data.clarification_question,
+          prompt: data.clarification_prompt,
+          initialAnswer: answer.trim(),
+        });
+        setAnswer("");
+        setRedirectNotice(null);
+        setEvaluation(null);
+        return;
+      }
+
+      // Action is EVALUATE
+      const result = data.evaluation;
       setEvaluation(result);
       setEvaluations((previous) => [...previous, result]);
       setPendingQuestion(data.next_question ?? null);
       setCompleted(Boolean(data.interview_completed));
+      setClarificationData(null);
+      setRedirectNotice(null);
       setNotice("");
 
       if (data.interview_completed) {
@@ -273,6 +308,9 @@ function App() {
       setPendingQuestion(null);
       setAnswer("");
       setEvaluation(null);
+      setDeciderResult(null);
+      setClarificationData(null);
+      setRedirectNotice(null);
       setNotice("");
     }
   }
@@ -528,6 +566,9 @@ function App() {
               evaluation={evaluation}
               pendingQuestion={pendingQuestion}
               evaluations={evaluations}
+              deciderResult={deciderResult}
+              clarificationData={clarificationData}
+              redirectNotice={redirectNotice}
               completed={completed}
               sessionAverage={sessionAverage}
               loading={loading}
@@ -813,6 +854,9 @@ function InterviewPage({
   evaluation,
   pendingQuestion,
   evaluations,
+  deciderResult,
+  clarificationData,
+  redirectNotice,
   completed,
   sessionAverage,
   loading,
@@ -932,6 +976,8 @@ function InterviewPage({
     );
   }
 
+  const activeDecider = deciderResult || (evaluation && evaluation.decider_metadata);
+
   return (
     <section className="mx-auto max-w-4xl">
       <div className="mb-7 flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
@@ -950,9 +996,34 @@ function InterviewPage({
           </p>
         </div>
         <div className="flex items-center gap-2 self-start rounded-full border border-purple-400/20 bg-purple-500/[0.07] px-3 py-2 text-xs text-purple-300">
-          <Sparkles size={14} /> AI Interview Session
+          <Sparkles size={14} /> AI Interview Agent
         </div>
       </div>
+
+      {/* Agent Decision Triage Panel */}
+      {activeDecider && (
+        <AgentDecisionPanel decider={activeDecider} />
+      )}
+
+      {/* Redirect Notice Banner (Candidate can retry without penalty) */}
+      {redirectNotice && !evaluation && (
+        <div className="mb-6 rounded-2xl border border-amber-500/30 bg-amber-500/[0.08] p-5">
+          <div className="flex items-start gap-3">
+            <CircleAlert className="mt-0.5 shrink-0 text-amber-400" size={18} />
+            <div>
+              <h4 className="text-xs font-semibold uppercase tracking-wider text-amber-300">
+                Action: Redirected · Please Retry
+              </h4>
+              <p className="mt-1 text-sm text-amber-200/90 leading-6">
+                {redirectNotice}
+              </p>
+              <p className="mt-2 text-[11px] text-zinc-400">
+                Tip: Provide a technical definition, explanation, or code snippet directly addressing the question.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="mb-6 rounded-2xl border border-white/[0.07] bg-surface p-5 sm:p-7">
         <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
@@ -974,27 +1045,55 @@ function InterviewPage({
             "No question is currently available. Please start a new interview."}
         </h3>
 
+        {/* Adaptive Clarification Prompt */}
+        {clarificationData && !evaluation && (
+          <div className="mt-6 rounded-xl border border-sky-500/30 bg-sky-500/[0.08] p-5">
+            <div className="flex items-start gap-3">
+              <Bot className="mt-0.5 shrink-0 text-sky-400" size={20} />
+              <div className="w-full">
+                <span className="rounded-full bg-sky-500/20 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-sky-300">
+                  Targeted Clarification
+                </span>
+                <p className="mt-2 text-sm font-medium text-sky-100 leading-6">
+                  {clarificationData.question}
+                </p>
+                {clarificationData.initialAnswer && (
+                  <p className="mt-2 text-xs text-zinc-400 italic">
+                    Your initial response: &quot;{clarificationData.initialAnswer}&quot;
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
         {!evaluation && (
           <>
             <label
               htmlFor="candidate-answer"
               className="mb-3 mt-7 block text-xs font-medium text-zinc-400"
             >
-              Your answer
+              {clarificationData ? "Your clarifying answer" : "Your answer"}
             </label>
             <textarea
               id="candidate-answer"
               value={answer}
               onChange={(event) => setAnswer(event.target.value)}
               disabled={loading}
-              placeholder="Explain your approach and include examples where helpful..."
-              rows={9}
+              placeholder={
+                clarificationData
+                  ? "Expand on the specific point asked above..."
+                  : "Explain your approach and include examples where helpful..."
+              }
+              rows={clarificationData ? 6 : 9}
               className="w-full resize-y rounded-xl border border-white/10 bg-[#0c0c14] p-4 text-sm leading-7 text-zinc-200 outline-none transition placeholder:text-zinc-600 focus:border-purple-400/50 disabled:opacity-60"
             />
 
             <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
               <p className="text-[11px] text-zinc-600">
-                Take your time. Clear, well-structured answers work best.
+                {clarificationData
+                  ? "Clarifying your answer allows Bedrock to evaluate your complete technical understanding."
+                  : "Take your time. Clear, well-structured answers work best."}
               </p>
               <span className="text-[10px] text-zinc-600">
                 {answer.trim() ? answer.trim().split(/\s+/).length : 0} words
@@ -1014,7 +1113,11 @@ function InterviewPage({
                 ) : (
                   <Send size={15} />
                 )}
-                {loading ? "Evaluating your answer..." : "Submit answer"}
+                {loading
+                  ? "Triage & Evaluating..."
+                  : clarificationData
+                    ? "Submit clarification"
+                    : "Submit answer"}
               </button>
 
               <button
@@ -1056,7 +1159,18 @@ function EvaluationPanel({
       <div className="rounded-2xl border border-purple-400/20 bg-gradient-to-br from-purple-950/40 to-surface p-6 sm:p-7">
         <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-center">
           <div>
-            <p className="text-xs text-purple-300">AI EVALUATION</p>
+            <div className="flex items-center gap-2">
+              <p className="text-xs text-purple-300 font-semibold tracking-wide">AI EVALUATION</p>
+              {evaluation.evaluator_model && (
+                <span className={`rounded px-2 py-0.5 text-[10px] font-mono border ${
+                  evaluation.evaluator_status === "bedrock_evaluated"
+                    ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
+                    : "border-amber-500/30 bg-amber-500/10 text-amber-300"
+                }`}>
+                  {evaluation.evaluator_model}
+                </span>
+              )}
+            </div>
             <h3 className="mt-2 text-lg font-semibold">
               Your answer has been evaluated
             </h3>
@@ -1391,6 +1505,135 @@ function ErrorNotice({ message }) {
     >
       <CircleAlert size={15} className="mt-0.5 shrink-0" />
       <span>{message}</span>
+    </div>
+  );
+}
+
+function AgentDecisionPanel({ decider }) {
+  if (!decider) return null;
+
+  const finalDecision = decider.final_decision || decider.decision || "EVALUATE";
+  const modelDecision = decider.model_decision;
+  const confidence = Number(decider.confidence ?? 0);
+  const latencyMs = Number(decider.latency_ms ?? 0);
+  const isFallback = Boolean(decider.is_fallback);
+  const probabilities = decider.probabilities || {};
+
+  const badgeConfig = {
+    EVALUATE: {
+      color: "border-emerald-500/30 bg-emerald-500/10 text-emerald-300",
+      label: "EVALUATE",
+      action: "Routing to Bedrock Generative Evaluation",
+    },
+    ASK_CLARIFICATION: {
+      color: "border-sky-500/30 bg-sky-500/10 text-sky-300",
+      label: "ASK CLARIFICATION",
+      action: "Generating targeted follow-up question",
+    },
+    REDIRECT: {
+      color: "border-amber-500/30 bg-amber-500/10 text-amber-300",
+      label: "REDIRECT",
+      action: "Evasive / unrelated answer detected — prompt candidate retry",
+    },
+  }[finalDecision] || {
+    color: "border-purple-500/30 bg-purple-500/10 text-purple-300",
+    label: finalDecision,
+    action: decider.action_taken || "Action taken",
+  };
+
+  return (
+    <div className="mb-6 rounded-2xl border border-white/[0.08] bg-[#0f0f18] p-5 shadow-lg">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/[0.06] pb-3">
+        <div className="flex items-center gap-2">
+          <Zap size={15} className="text-purple-400" />
+          <span className="text-xs font-semibold uppercase tracking-wider text-zinc-300">
+            Agent Decision Gate
+          </span>
+          <span className="rounded-md bg-purple-500/15 px-2 py-0.5 text-[10px] font-mono text-purple-300">
+            #policy
+          </span>
+          <span className="rounded-md bg-zinc-800 px-2 py-0.5 text-[10px] font-mono text-zinc-400">
+            #strands-decider-2b
+          </span>
+        </div>
+        <div className="flex items-center gap-2">
+          {isFallback ? (
+            <span className="rounded-full border border-amber-500/20 bg-amber-500/10 px-2.5 py-0.5 text-[10px] font-medium text-amber-300">
+              Calibrated Fallback Safety Policy
+            </span>
+          ) : (
+            <span className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-0.5 text-[10px] font-medium text-emerald-400">
+              Strands Decider 2B (MPS/Local)
+            </span>
+          )}
+          <span className="text-[10px] font-mono text-zinc-500">
+            {latencyMs.toFixed(1)} ms
+          </span>
+        </div>
+      </div>
+
+      <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <div>
+          <p className="text-[10px] uppercase tracking-wider text-zinc-500">
+            Decision Flow
+          </p>
+          <div className="mt-1 flex flex-col gap-1.5">
+            <div className="flex items-center gap-2">
+              <span
+                className={`rounded-lg border px-2.5 py-1 text-xs font-bold font-mono tracking-wide ${badgeConfig.color}`}
+              >
+                {badgeConfig.label}
+              </span>
+            </div>
+            {modelDecision && isFallback && (
+              <span className="text-[10px] text-zinc-400">
+                Model originally chose: <strong className="text-zinc-300">{modelDecision}</strong>
+              </span>
+            )}
+          </div>
+        </div>
+
+        <div>
+          <div className="flex items-center justify-between">
+            <p className="text-[10px] uppercase tracking-wider text-zinc-500">
+              Calibrated Confidence
+            </p>
+            <span className="text-xs font-bold font-mono text-purple-300">
+              {(confidence * 100).toFixed(1)}%
+            </span>
+          </div>
+          <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/[0.07]">
+            <div
+              className="h-full rounded-full bg-gradient-to-r from-purple-500 to-indigo-500"
+              style={{ width: `${Math.min(Math.max(confidence * 100, 5), 100)}%` }}
+            />
+          </div>
+          {Object.keys(probabilities).length > 0 && (
+            <div className="mt-2 flex flex-wrap gap-2 text-[9px] font-mono text-zinc-400">
+              {Object.entries(probabilities).map(([key, val]) => (
+                <span key={key} className="rounded bg-black/40 px-1.5 py-0.5">
+                  {key}: {(Number(val) * 100).toFixed(1)}%
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div>
+          <p className="text-[10px] uppercase tracking-wider text-zinc-500">
+            Execution Action
+          </p>
+          <p className="mt-1 text-xs text-zinc-300 leading-snug">
+            {decider.action_taken || badgeConfig.action}
+          </p>
+        </div>
+      </div>
+
+      {isFallback && decider.fallback_reason && (
+        <p className="mt-3 text-[10px] text-zinc-500 italic">
+          Safety Notice: {decider.fallback_reason}
+        </p>
+      )}
     </div>
   );
 }

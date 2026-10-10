@@ -41,7 +41,7 @@ from app.schemas import (
     SubmitAnswerResponse,
     EvaluationResponse,
 )
-from app.services.interview_agent import evaluate_candidate_answer
+from app.services.interview_agent import execute_interview_turn
 
 logger = logging.getLogger(__name__)
 
@@ -280,6 +280,7 @@ def start_interview(
         "questions": chosen_questions,
         "current_index": 0,
         "answered_question_ids": set(),
+        "pending_clarification": {},
     }
 
     return {
@@ -344,56 +345,108 @@ def submit_answer(
             detail="Please enter an answer before submitting.",
         )
 
+    pending_clarif = session.get("pending_clarification", {}).get(request.question_id)
+    is_clarif = request.is_clarification_response or (pending_clarif is not None)
+    initial_answer = pending_clarif["initial_answer"] if is_clarif and pending_clarif else request.answer.strip()
+    follow_up_answer = request.answer.strip() if is_clarif and pending_clarif else None
+
     try:
-        # The candidate's answer is sent to the local Ollama model.
-        evaluation = evaluate_candidate_answer(
+        turn_result = execute_interview_turn(
             question=current_question["question"],
-            candidate_answer=request.answer.strip(),
+            candidate_answer=initial_answer,
             topic=session["topic"],
             search_enabled=session["use_web_search"],
+            is_clarification_response=is_clarif,
+            combined_follow_up=follow_up_answer,
         )
-
-        # Persist the answer only after a successful evaluation.
-        save_answer(
-            interview_id=session_id,
-            question_id=str(current_question["question_id"]),
-            question=current_question["question"],
-            candidate_answer=request.answer.strip(),
-            evaluation=evaluation,
-        )
-
     except Exception as exc:
-        # Preserve the session so the candidate can retry.
-        logger.exception("Answer evaluation failed.")
+        logger.exception("Interview turn execution failed.")
         raise HTTPException(
             status_code=502,
-            detail=(
-                "Answer evaluation failed. Check that Ollama is running "
-                "and the local model is available, then retry. "
-                f"Error type: {type(exc).__name__}"
-            ),
+            detail=f"Interview turn processing failed: {exc}",
         ) from exc
+
+    action = turn_result["action"]
+    decider = turn_result["decider"]
+    total_questions = len(questions)
+
+    # 1. REDIRECT: off-topic or evasive answer
+    if action == "REDIRECT":
+        return {
+            "session_id": session_id,
+            "question_id": request.question_id,
+            "action": "REDIRECT",
+            "decider": decider,
+            "evaluation": None,
+            "clarification_question": None,
+            "clarification_prompt": None,
+            "redirect_message": turn_result["redirect_message"],
+            "evaluated_count": session["current_index"],
+            "total_questions": total_questions,
+            "next_question": None,
+            "interview_completed": False,
+        }
+
+    # 2. ASK_CLARIFICATION: partial / ambiguous answer needing one follow-up
+    if action == "ASK_CLARIFICATION":
+        session.setdefault("pending_clarification", {})[request.question_id] = {
+            "initial_answer": request.answer.strip(),
+            "clarification_question": turn_result["clarification_question"],
+        }
+        return {
+            "session_id": session_id,
+            "question_id": request.question_id,
+            "action": "ASK_CLARIFICATION",
+            "decider": decider,
+            "evaluation": None,
+            "clarification_question": turn_result["clarification_question"],
+            "clarification_prompt": turn_result["clarification_prompt"],
+            "redirect_message": None,
+            "evaluated_count": session["current_index"],
+            "total_questions": total_questions,
+            "next_question": None,
+            "interview_completed": False,
+        }
+
+    # 3. EVALUATE: substantive answer evaluated and scored
+    evaluation = turn_result["evaluation"]
+
+    # Combine answers if clarification was submitted
+    final_saved_answer = request.answer.strip()
+    if is_clarif and pending_clarif:
+        final_saved_answer = f"{pending_clarif['initial_answer']}\n[Clarification]: {request.answer.strip()}"
+        session["pending_clarification"].pop(request.question_id, None)
+
+    # Persist evaluated answer to SQLite
+    save_answer(
+        interview_id=session_id,
+        question_id=str(current_question["question_id"]),
+        question=current_question["question"],
+        candidate_answer=final_saved_answer,
+        evaluation=evaluation,
+    )
 
     session["answered_question_ids"].add(request.question_id)
     session["current_index"] += 1
 
     evaluated_count = session["current_index"]
-    total_questions = len(questions)
-
-    next_question = None
     interview_completed = evaluated_count >= total_questions
 
+    next_question = None
     if interview_completed:
         complete_interview(session_id)
-        # Keep the session in memory until the report is fetched or
-        # the process restarts. This also helps prevent accidental reuse.
     else:
         next_question = public_question(questions[session["current_index"]])
 
     return {
         "session_id": session_id,
         "question_id": request.question_id,
+        "action": "EVALUATE",
+        "decider": decider,
         "evaluation": evaluation,
+        "clarification_question": None,
+        "clarification_prompt": None,
+        "redirect_message": None,
         "evaluated_count": evaluated_count,
         "total_questions": total_questions,
         "next_question": next_question,

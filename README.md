@@ -1,108 +1,134 @@
-# AI Interview Coach
+# InterviewIQ — Adaptive AI Interview Agent
 
-A local-first interview practice project built with **Phi-3 + Ollama, LangChain, LangGraph, Streamlit, DDGS, and SQLite**. It does not require a paid LLM API key.
+[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
+[![Hackathon](https://img.shields.io/badge/AWS-Strands%20Decider%20Hackathon-orange.svg)](#)
+[![Tags](https://img.shields.io/badge/Tags-%23strands--decider--2b%20|%20%23policy-purple.svg)](#)
 
-## 1. Requirements
+**InterviewIQ** is an adaptive technical interview coaching agent powered by **Strands Decider 2B** and **Amazon Bedrock**.
 
-- Python 3.12 recommended
-- Ollama installed and running
-- `phi3:latest` available in Ollama
-- Internet only if you choose optional web search
+Instead of routing every user response directly into heavy generative models, InterviewIQ implements the **`#policy`** decision pattern:
+1. **System 1 (Decision Gate)**: **Strands Decider 2B** performs sub-150ms triage using a pointer head, classifying answers into `EVALUATE`, `ASK_CLARIFICATION`, or `REDIRECT`.
+2. **System 2 (Generative Reasoning)**: **Amazon Bedrock** (`google.gemma-3-4b-it` in `ap-southeast-2`) produces deep 4-criterion feedback or asks targeted clarifying questions.
+3. **Deterministic Scoring**: Strict Python weighted math avoids generative arithmetic errors.
 
-Confirm your model:
+---
 
-```bash
-ollama list
+## Architecture Flow
+
+```
+Candidate Answer 
+      │
+      ▼
+Strands Decider 2B (#policy Decision Gate)
+      ├─► REDIRECT --------► Evasive / Off-Topic (Instant Coaching Guidance)
+      ├─► ASK_CLARIFICATION► Ambiguous (Bedrock Generates 1 Targeted Follow-up)
+      └─► EVALUATE --------► Substantive Answer -> Amazon Bedrock 4-Criteria Evaluation
 ```
 
-If needed, download it once:
+---
 
+## Submission Tags
+
+- `#strands-decider-2b`
+- `#policy`
+
+---
+
+## Key Features
+
+- **Sub-150ms Decision Triage**: Powered by `StrandsAgents/strands-decider-2B-hobson-v21` on Apple Silicon MPS or CPU.
+- **Calibrated Confidence Tracking**: Every decision reports real model confidence and latency.
+- **Fail-Safe Fallback**: If confidence drops below `0.60` or hardware is unavailable, a calibrated fallback engages with full transparency.
+- **Adaptive Clarification**: Prevents premature candidate penalties by generating targeted follow-up questions before scoring.
+- **Deterministic 4-Criteria Rubric**: Technical Correctness (40%), Completeness (30%), Clarity (15%), Structure (15%).
+- **202 Curated Technical Questions**: Spanning 10 domains from Python to RAG and Agentic AI.
+- **Modern Full-Stack Experience**: FastAPI backend + React 19 / Vite / Tailwind CSS frontend.
+- **Reusable Decision Pattern**: Exported in `patterns/adaptive_interview_policy/`.
+
+---
+
+## Quickstart (Local Development)
+
+### 1. Prerequisites
+- Python 3.12+
+- Node.js 18+ (for frontend)
+- Apple Silicon Mac (M-series) or CUDA GPU / CPU
+
+### 2. Backend Setup
 ```bash
-ollama pull phi3:latest
-```
+# Clone the repository
+git clone https://github.com/ritikmishra004/PrepMind-AI.git
+cd ai-interview-coach-hackathon
 
-## 2. Setup
-
-From the project root:
-
-```bash
+# Setup virtual environment
 python3 -m venv .venv
 source .venv/bin/activate
-python -m pip install --upgrade pip
-python -m pip install -r requirements.txt
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Configure environment
+cp .env.example .env
 ```
 
-If Ollama is not already running in the background, open another terminal and run:
-
+### 3. Run Automated Tests
 ```bash
-ollama serve
+PYTHONPATH=backend pytest backend/tests/
 ```
 
-## 3. Start the app
+### 4. Run Smoke Test for Live Models
+```bash
+PYTHONPATH=backend python backend/tests/smoke_test_real_models.py
+```
 
+### 5. Start Backend Server
 ```bash
 source .venv/bin/activate
-streamlit run app.py
+cd backend
+uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
-Streamlit will print a local URL, usually `http://localhost:8501`.
-
-## 4. Features
-
-- Dashboard with metrics computed from the SQLite database
-- Topic/difficulty selection and sequential interview questions
-- Local Phi-3 evaluation through LangChain
-- LangGraph workflow: optional evidence retrieval → answer evaluation → weighted scoring
-- Correctness, completeness, clarity and structure scores
-- Strengths, points to improve, reference answer and improved answer
-- Optional free DDGS web search; snippets cached in `data/processed/search_cache.json`
-- SQLite interview history in `data/interview_history.db`
-- Practice Hub and detailed history view
-
-## 5. Project tree
-
-```text
-ai-interview-coach/
-├── app.py
-├── interview_agent.py
-├── search_service.py
-├── database.py
-├── requirements.txt
-├── README.md
-├── .gitignore
-├── data/
-│   ├── raw/
-│   │   └── question_bank.json
-│   └── processed/
-│       └── .gitkeep
-├── docs/
-│   ├── project_scope.md
-│   └── evaluation_rubric.md
-└── tests/
-    └── test_scoring.py
-```
-
-Runtime database and search cache files are created on first use.
-
-## 6. Test the deterministic scoring formula
-
+### 6. Start Frontend Application
 ```bash
-python -m unittest discover -s tests -v
+cd frontend
+npm install
+npm run dev
+```
+Open your browser at `http://localhost:5173`.
+
+---
+
+## AWS Deployment Architecture
+
+For submission compliance and production hosting on AWS:
+- **FastAPI Backend**: Containerized on **AWS App Runner** or **ECS Fargate** (1 vCPU, 2 GB RAM).
+- **React Frontend**: Static web build deployed on **Amazon S3 + CloudFront CDN**.
+- **Generative Inference**: **Amazon Bedrock** (`google.gemma-3-4b-it` in region `ap-southeast-2`).
+- **Decider Inference**: Local/containerized Strands Decider 2B engine.
+
+---
+
+## Reusable Pattern: Adaptive Interview Policy
+
+A standalone implementation of the `#policy` decision pattern is available in `patterns/adaptive_interview_policy/`:
+```bash
+PYTHONPATH=. python patterns/adaptive_interview_policy/example_usage.py
 ```
 
-## 7. How the workflow works
+See [patterns/adaptive_interview_policy/README.md](patterns/adaptive_interview_policy/README.md) for full integration details.
 
-1. The UI selects questions from the question-only JSON bank.
-2. Candidate submits an answer.
-3. LangGraph optionally retrieves cached/free web snippets.
-4. LangChain calls the local Phi-3 model to produce evaluation JSON.
-5. Python validates category scores and calculates the weighted total.
-6. SQLite saves the question, answer, scores, feedback and sources.
-7. Dashboard/history queries show saved session metrics.
+---
 
-## Notes and limitations
+## Documentation
 
-- First-time search can take longer; repeat searches use the local cache. Uncheck web search for faster practice.
-- Phi-3 can still make mistakes or return inconsistent evaluations. Treat feedback as a learning aid, not an authoritative hiring result.
-- Search snippets can be incomplete or low-quality; review sources for important technical claims.
-- No fine-tuning is included in this phase. First establish a functioning app and a reviewed evaluation dataset.
+- [System Architecture](docs/architecture.md)
+- [Decision Pattern Guide](docs/decision-pattern.md)
+- [AWS Builder Center Article Draft](docs/builder-center-article-draft.md)
+- [Demo Video Script (<3 min)](docs/demo-video-script.md)
+- [Hackathon Submission Checklist](docs/hackathon-submission-checklist.md)
+
+---
+
+## License
+
+This project is licensed under the [Apache License 2.0](LICENSE).

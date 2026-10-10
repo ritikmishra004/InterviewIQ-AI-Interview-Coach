@@ -8,3 +8,10 @@ langgraph
 ddgs
 pytest
 httpx
+boto3
+botocore
+torch
+transformers
+accelerate
+strands-decider
+python-dotenv

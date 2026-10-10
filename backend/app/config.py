@@ -1,16 +1,14 @@
-
 """
-Application configuration.
-
-The project uses Phi-3 through Ollama for local inference.
-No paid LLM API key is needed.
-
-Centralizing configuration prevents model names, file paths,
-and scoring weights from drifting between modules.
+Application configuration for InterviewIQ — Adaptive AI Interview Agent.
+Supports Strands Decider 2B for #policy triage and Amazon Bedrock for generative evaluation.
 """
 
+import os
 from pathlib import Path
+from dotenv import load_dotenv
 
+# Load .env if present
+load_dotenv()
 
 # backend/ is the parent of the app/ directory.
 BACKEND_DIR = Path(__file__).resolve().parent.parent
@@ -24,8 +22,20 @@ QUESTION_BANK_PATH = RAW_DATA_DIR / "question_bank.json"
 DATABASE_PATH = DATA_DIR / "interview_history.db"
 SEARCH_CACHE_PATH = PROCESSED_DATA_DIR / "search_cache.json"
 
-# Ollama runs the open-weight model on the local machine.
-OLLAMA_MODEL = "phi3:latest"
+# Ollama runs the open-weight model on the local machine (fallback).
+OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "phi3:latest")
+
+# AWS Bedrock configuration
+AWS_REGION = os.getenv("AWS_REGION", "ap-southeast-2")
+BEDROCK_MODEL_ID = os.getenv("BEDROCK_MODEL_ID", "google.gemma-3-4b-it")
+USE_BEDROCK = os.getenv("USE_BEDROCK", "false").lower() in ("true", "1", "yes")
+
+# Strands Decider 2B configuration
+DECIDER_MODEL_ID = os.getenv("DECIDER_MODEL_ID", "StrandsAgents/strands-decider-2B-hobson-v21")
+DECIDER_DEVICE = os.getenv("DECIDER_DEVICE", "mps")
+USE_LOCAL_DECIDER = os.getenv("USE_LOCAL_DECIDER", "true").lower() in ("true", "1", "yes")
+DECIDER_CONFIDENCE_THRESHOLD = float(os.getenv("DECIDER_CONFIDENCE_THRESHOLD", "0.60"))
+DECIDER_ENDPOINT_URL = os.getenv("DECIDER_ENDPOINT_URL", "")
 
 # Keep model generation deterministic for more consistent evaluation.
 LLM_TEMPERATURE = 0
@@ -40,7 +50,7 @@ SCORING_WEIGHTS = {
 
 # Optional web search should remain disabled unless the candidate
 # explicitly enables it for an interview.
-DEFAULT_WEB_SEARCH_ENABLED = False
+DEFAULT_WEB_SEARCH_ENABLED = os.getenv("DEFAULT_WEB_SEARCH_ENABLED", "false").lower() in ("true", "1", "yes")
 
 # Search snippets are supporting evidence, not guaranteed ground truth.
 MAX_SEARCH_RESULTS = 4

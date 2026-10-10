@@ -1,16 +1,17 @@
-
 """
 schemas.py — API request and response contracts.
 
 FastAPI uses Pydantic models to validate incoming requests
 and structure outgoing responses.
 
-The React frontend and Python backend will use these schemas
-as a consistent contract, preventing mismatched field names.
+Updated for InterviewIQ with Strands Decider 2B (#policy) and Amazon Bedrock:
+- DecisionMetadata: Decision, confidence, action, latency, fallback flag.
+- Adaptive actions: EVALUATE, ASK_CLARIFICATION, REDIRECT.
+- SubmitAnswerResponse: Carries decider metadata, optional clarification question,
+  optional redirect guidance, and evaluation when evaluated.
 """
 
-from typing import Literal
-
+from typing import Any, Literal
 from pydantic import BaseModel, Field
 
 
@@ -39,7 +40,7 @@ class StartInterviewResponse(BaseModel):
 
 
 # ---------------------------------------------------------
-# Answer submission
+# Answer submission & clarification
 # ---------------------------------------------------------
 
 class SubmitAnswerRequest(BaseModel):
@@ -48,6 +49,28 @@ class SubmitAnswerRequest(BaseModel):
     session_id: int = Field(gt=0)
     question_id: str = Field(min_length=1, max_length=100)
     answer: str = Field(min_length=1, max_length=20000)
+    # Optional flag indicating this is a follow-up answer to a clarification question
+    is_clarification_response: bool = False
+
+
+# ---------------------------------------------------------
+# Strands Decider 2B Decision Metadata
+# ---------------------------------------------------------
+
+class DecisionMetadata(BaseModel):
+    """Metadata produced by Strands Decider 2B (#policy triage)."""
+
+    model: str = "StrandsAgents/strands-decider-2B-hobson-v21"
+    pattern: str = "#policy"
+    decision: Literal["EVALUATE", "ASK_CLARIFICATION", "REDIRECT"]
+    model_decision: Literal["EVALUATE", "ASK_CLARIFICATION", "REDIRECT"] | None = None
+    final_decision: Literal["EVALUATE", "ASK_CLARIFICATION", "REDIRECT"]
+    action_taken: str
+    confidence: float = Field(ge=0.0, le=1.0)
+    latency_ms: float = Field(ge=0.0)
+    is_fallback: bool = False
+    fallback_reason: str | None = None
+    probabilities: dict[str, float] = Field(default_factory=dict)
 
 
 # ---------------------------------------------------------
@@ -62,7 +85,7 @@ class CriterionScore(BaseModel):
 
 
 class EvaluationResponse(BaseModel):
-    """Evaluation returned by the local LLM workflow."""
+    """Evaluation returned by Bedrock/LangGraph workflow."""
 
     technical_correctness: CriterionScore
     completeness: CriterionScore
@@ -77,16 +100,32 @@ class EvaluationResponse(BaseModel):
 
     final_score: float = Field(ge=0, le=10)
 
+    evaluator_model: str = "Bedrock/google.gemma-3-4b-it"
+    evaluator_status: Literal["bedrock_evaluated", "local_fallback", "deterministic_fallback"] = "bedrock_evaluated"
+
     sources: list[dict[str, str]] = Field(default_factory=list)
     search_note: str = ""
+    decider_metadata: DecisionMetadata | None = None
 
 
 class SubmitAnswerResponse(BaseModel):
-    """Evaluation plus interview progress after an answer is submitted."""
+    """Adaptive interview response covering EVALUATE, ASK_CLARIFICATION, and REDIRECT."""
 
     session_id: int
     question_id: str
-    evaluation: EvaluationResponse
+    action: Literal["EVALUATE", "ASK_CLARIFICATION", "REDIRECT"]
+    decider: DecisionMetadata
+
+    # Present when action == 'EVALUATE'
+    evaluation: EvaluationResponse | None = None
+
+    # Present when action == 'ASK_CLARIFICATION'
+    clarification_question: str | None = None
+    clarification_prompt: str | None = None
+
+    # Present when action == 'REDIRECT'
+    redirect_message: str | None = None
+
     evaluated_count: int
     total_questions: int
     next_question: dict | None = None
