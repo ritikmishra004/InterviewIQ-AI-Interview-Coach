@@ -57,8 +57,8 @@ Strands Decider 2B (#policy Decision Gate)
 ### 2. Backend Setup
 ```bash
 # Clone the repository
-git clone https://github.com/ritikmishra004/PrepMind-AI.git
-cd ai-interview-coach-hackathon
+git clone https://github.com/ritikmishra004/InterviewIQ-AI-Interview-Coach.git
+cd InterviewIQ-AI-Interview-Coach
 
 # Setup virtual environment
 python3 -m venv .venv
