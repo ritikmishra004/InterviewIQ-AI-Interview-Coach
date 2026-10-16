@@ -52,5 +52,26 @@ SCORING_WEIGHTS = {
 # explicitly enables it for an interview.
 DEFAULT_WEB_SEARCH_ENABLED = os.getenv("DEFAULT_WEB_SEARCH_ENABLED", "false").lower() in ("true", "1", "yes")
 
+# Canonical 16 approved topics whitelist for InterviewIQ
+APPROVED_TOPICS = [
+    "LLM",
+    "Transformer",
+    "Generative AI",
+    "Agentic AI",
+    "SQL",
+    "Coding",
+    "Statistics",
+    "Machine Learning",
+    "Deep Learning",
+    "MCP",
+    "Computer Networks",
+    "Operating System",
+    "Python",
+    "NLP",
+    "AI Engineering",
+    "RAG",
+]
+
 # Search snippets are supporting evidence, not guaranteed ground truth.
 MAX_SEARCH_RESULTS = 4
+

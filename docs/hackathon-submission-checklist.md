@@ -16,7 +16,7 @@
 | **License** | Approved OSI Open Source | ✅ Completed | Apache-2.0 License added (`LICENSE`). |
 | **Tags** | Submission Tags | ✅ Completed | `#strands-decider-2b` and `#policy` across code, docs, and UI. |
 | **Config** | Safe Secret Isolation | ✅ Completed | Environment template `.env.example` provided. |
-| **Testing** | Automated Test Suite | ✅ Completed | 22 automated tests passing in Pytest (`backend/tests/`). |
+| **Testing** | Automated Test Suite | ✅ Completed | 25 automated tests passing in Pytest (`backend/tests/`). |
 | **Frontend** | Build Integrity | ✅ Completed | Vite React production build passing without errors. |
 | **Article** | AWS Builder Center Draft | ✅ Completed | Formatted draft in `docs/builder-center-article-draft.md`. |
 | **Video** | Demo Video Script (<3 min) | ✅ Completed | Time-coded script in `docs/demo-video-script.md`. |

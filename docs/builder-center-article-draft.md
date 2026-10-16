@@ -14,14 +14,14 @@ To bridge this gap, we built **InterviewIQ — Adaptive AI Interview Agent** usi
 
 ---
 
-## Architecture: Fast Triage Meets Deep Generative Evaluation
+## Architecture: Decision Triage Meets Deep Generative Evaluation
 
 InterviewIQ implements a two-stage decision and evaluation pipeline:
 
-1. **System 1 (Decision Gate)**: **Strands Decider 2B** (`StrandsAgents/strands-decider-2B-hobson-v21`). Operating in sub-150ms latency using a pointer head, it evaluates the tuple `(question, candidate_answer, topic)` to classify the next action using the **`#policy`** pattern:
+1. **System 1 (Decision Gate)**: **Strands Decider 2B** (`StrandsAgents/strands-decider-2B-hobson-v21`). Using a calibrated pointer head, it evaluates the tuple `(question, candidate_answer, topic)` to classify the next action using the **`#policy`** pattern:
    - **`EVALUATE`**: The answer contains technical substance (explanations, definitions, or code snippets) ready for rubric scoring.
    - **`ASK_CLARIFICATION`**: The answer touches on the topic but is ambiguous or partial; 1 targeted follow-up question is required.
-   - **`REDIRECT`**: The answer is off-topic, evasive, or adversarial; the candidate is coached to retry without grading.
+   - **`REDIRECT`**: The answer is off-topic, evasive, or unrelated; the candidate is coached to retry without grading.
 
 2. **System 2 (Generative Reasoning)**: **Amazon Bedrock** (`google.gemma-3-4b-it` in `ap-southeast-2`).
    - When routed to `EVALUATE`, Bedrock performs multi-factor rubric analysis (Technical Correctness 40%, Completeness 30%, Clarity 15%, Structure 15%), highlights strengths, and provides model answers.
@@ -34,14 +34,14 @@ InterviewIQ implements a two-stage decision and evaluation pipeline:
 ## Calibrated Confidence and Safety Fallback
 
 Decider 2B provides calibrated output distributions rather than uncalibrated logit guesses. InterviewIQ monitors this probability:
-- If confidence drops below `0.60`, the system automatically engages a calibrated fallback policy.
+- If model confidence drops below the configured threshold (`0.60`) or if inference falls back, the system automatically engages a calibrated deterministic policy.
 - The UI transparently presents whether a real model or fallback took the action, providing complete auditability for users and interviewers.
 
 ---
 
 ## Reusable Decision Pattern for the Community
 
-We extracted this policy pattern into a clean, standalone module in `patterns/adaptive_interview_policy/`. Any developer building an interactive coaching or tutoring agent can drop in this pattern to prevent token waste, guard against prompt injection, and add adaptive follow-up behavior in less than 50 lines of code.
+We extracted this policy pattern into a clean, standalone module in `patterns/adaptive_interview_policy/`. Any developer building an interactive coaching or tutoring agent can drop in this pattern to triage candidate answers, request clarifications adaptively, and prevent token waste.
 
 ---
 

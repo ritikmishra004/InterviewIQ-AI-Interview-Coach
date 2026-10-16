@@ -41,7 +41,9 @@ Strands Decider 2B (#policy Decision Gate)
 - **Fail-Safe Fallback**: If confidence drops below `0.60` or hardware is unavailable, a calibrated fallback engages with full transparency.
 - **Adaptive Clarification**: Prevents premature candidate penalties by generating targeted follow-up questions before scoring.
 - **Deterministic 4-Criteria Rubric**: Technical Correctness (40%), Completeness (30%), Clarity (15%), Structure (15%).
-- **202 Curated Technical Questions**: Spanning 10 domains from Python to RAG and Agentic AI.
+- **1,350 Curated Technical Questions**: Structured across exactly 16 canonical topic areas with zero unclassified questions.
+- **Strict 16-Topic Taxonomy**: LLM, Transformer, Generative AI, Agentic AI, SQL, Coding, Statistics, Machine Learning, Deep Learning, MCP, Computer Networks, Operating System, Python, NLP, AI Engineering, RAG.
+- **In-Depth Question Bank Explorer**: Dedicated topic browsing, difficulty filters, and seamless navigation with zero unwanted overview redirects.
 - **Modern Full-Stack Experience**: FastAPI backend + React 19 / Vite / Tailwind CSS frontend.
 - **Reusable Decision Pattern**: Exported in `patterns/adaptive_interview_policy/`.
 

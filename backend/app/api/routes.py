@@ -21,7 +21,7 @@ from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query
 
-from app.config import QUESTION_BANK_PATH
+from app.config import APPROVED_TOPICS, QUESTION_BANK_PATH
 from app.database import (
     complete_interview,
     create_interview,
@@ -158,29 +158,52 @@ def health_check() -> dict[str, str]:
 
 @router.get("/topics")
 def get_topics() -> dict[str, list[str]]:
-    """Return topics available in the question bank."""
-    questions = load_question_bank()
-    topics = sorted({item["topic"] for item in questions})
-    return {"topics": topics}
+    """Return the 16 canonical approved topics in the question bank."""
+    return {"topics": list(APPROVED_TOPICS)}
 
 
 @router.get("/question-counts")
 def get_question_counts() -> dict[str, Any]:
-    """Return available counts for each topic and difficulty."""
+    """Return available counts for each of the 16 approved topics and difficulties."""
     questions = load_question_bank()
-    counts: dict[str, dict[str, int]] = {}
+    counts: dict[str, dict[str, int]] = {
+        topic: {"Easy": 0, "Medium": 0, "Hard": 0} for topic in APPROVED_TOPICS
+    }
 
     for item in questions:
         topic = item["topic"]
         difficulty = item["difficulty"]
-
-        counts.setdefault(
-            topic,
-            {"Easy": 0, "Medium": 0, "Hard": 0},
-        )
-        counts[topic][difficulty] += 1
+        if topic in counts and difficulty in counts[topic]:
+            counts[topic][difficulty] += 1
 
     return {"counts": counts}
+
+
+@router.get("/questions")
+def get_questions(
+    topic: str | None = Query(default=None),
+    difficulty: str | None = Query(default=None),
+    limit: int = Query(default=50, ge=1, le=500),
+    offset: int = Query(default=0, ge=0),
+) -> dict[str, Any]:
+    """Return questions matching filters, with pagination."""
+    questions = load_question_bank()
+
+    filtered = questions
+    if topic:
+        filtered = [q for q in filtered if q["topic"].casefold() == topic.casefold()]
+    if difficulty:
+        filtered = [q for q in filtered if q["difficulty"].casefold() == difficulty.casefold()]
+
+    total = len(filtered)
+    paged = filtered[offset : offset + limit]
+
+    return {
+        "total": total,
+        "limit": limit,
+        "offset": offset,
+        "questions": paged,
+    }
 
 
 # ---------------------------------------------------------

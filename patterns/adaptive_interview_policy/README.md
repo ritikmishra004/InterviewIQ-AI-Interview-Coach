@@ -53,10 +53,12 @@ decision = policy.decide(
 )
 
 print(decision["decision"])       # "EVALUATE"
-print(decision["confidence"])     # 0.85
-print(decision["latency_ms"])     # 12.4 ms
-print(decision["is_fallback"])    # False
+print(decision["confidence"])     # Model confidence (e.g., 0.85; triggers fallback if <0.60)
+print(decision["latency_ms"])     # Execution latency (depends on local GPU/MPS vs CPU)
+print(decision["is_fallback"])    # False (or True if low-confidence/offline)
 ```
+
+> **Note:** The numbers above are illustrative. Real inference latency and confidence vary dynamically based on hardware acceleration (MPS/CUDA vs reference CPU convolution) and answer complexity.
 
 ---
 

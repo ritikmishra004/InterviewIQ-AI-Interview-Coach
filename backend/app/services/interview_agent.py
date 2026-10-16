@@ -327,9 +327,16 @@ def evaluate_answer_node(state: InterviewState) -> dict[str, Any]:
             combined_follow_up=combined_follow_up,
         )
         if bedrock_eval:
-            evaluation = parse_model_evaluation(bedrock_eval)
-            evaluator_model = f"Bedrock/{BEDROCK_MODEL_ID}"
-            evaluator_status = "bedrock_evaluated"
+            try:
+                evaluation = parse_model_evaluation(bedrock_eval)
+                evaluator_model = f"Bedrock/{BEDROCK_MODEL_ID}"
+                evaluator_status = "bedrock_evaluated"
+            except Exception as parse_err:
+                logger.warning(
+                    "Bedrock response failed schema validation or JSON parsing (%s). Falling back.",
+                    parse_err,
+                )
+                evaluation = None
         else:
             logger.warning("Bedrock evaluation failed (%s). Falling back.", err)
 
@@ -356,6 +363,7 @@ def evaluate_answer_node(state: InterviewState) -> dict[str, Any]:
                 evaluator_status = "local_fallback"
             except Exception as exc:
                 logger.warning("Local Ollama evaluation failed: %s", exc)
+                evaluation = None
 
     # Deterministic fallback evaluation to ensure robust contract guarantees
     if evaluation is None:

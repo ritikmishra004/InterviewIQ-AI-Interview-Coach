@@ -21,6 +21,7 @@ import {
   Bot,
   Layers3,
   Zap,
+  Cpu,
   Play,
   CheckCircle2,
   Menu,
@@ -36,29 +37,41 @@ const API_BASE =
   import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000/api";
 
 const FALLBACK_TOPICS = [
-  "Python",
+  "LLM",
+  "Transformer",
+  "Generative AI",
+  "Agentic AI",
+  "SQL",
+  "Coding",
   "Statistics",
   "Machine Learning",
   "Deep Learning",
-  "NLP",
-  "LLM and Generative AI",
-  "RAG",
   "MCP",
-  "Agentic AI",
+  "Computer Networks",
+  "Operating System",
+  "Python",
+  "NLP",
   "AI Engineering",
+  "RAG",
 ];
 
 const TOPIC_ICONS = {
-  Python: Code2,
+  LLM: Sparkles,
+  Transformer: Layers3,
+  "Generative AI": Sparkles,
+  "Agentic AI": Bot,
+  SQL: Database,
+  Coding: Code2,
   Statistics: Target,
   "Machine Learning": BrainCircuit,
   "Deep Learning": Layers3,
-  NLP: BookOpen,
-  "LLM and Generative AI": Sparkles,
-  RAG: Database,
   MCP: Network,
-  "Agentic AI": Bot,
+  "Computer Networks": Network,
+  "Operating System": Cpu,
+  Python: Code2,
+  NLP: BookOpen,
   "AI Engineering": Zap,
+  RAG: Database,
 };
 
 const NAVIGATION = [
@@ -117,9 +130,7 @@ function formatDate(value) {
 function App() {
   const [activePage, setActivePage] = useState("Overview");
   const [topics, setTopics] = useState(FALLBACK_TOPICS);
-  const [selectedTopic, setSelectedTopic] = useState(
-    "LLM and Generative AI"
-  );
+  const [selectedTopic, setSelectedTopic] = useState("RAG");
   const [difficulty, setDifficulty] = useState("Medium");
   const [useWebSearch, setUseWebSearch] = useState(false);
 
@@ -592,9 +603,10 @@ function App() {
           {activePage === "Question Bank" && (
             <QuestionBankPage
               topics={topics}
-              onSelect={(topic) => {
+              onStartPractice={(topic) => {
                 setSelectedTopic(topic);
-                goToPage("Overview");
+                goToPage("Practice Interview");
+                startInterview();
               }}
             />
           )}
@@ -1352,33 +1364,224 @@ function TextPanel({ title, text }) {
   );
 }
 
-function QuestionBankPage({ topics, onSelect }) {
+function QuestionBankPage({ topics, onStartPractice }) {
+  const [selectedTopic, setSelectedTopic] = useState(null);
+  const [questions, setQuestions] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [difficultyFilter, setDifficultyFilter] = useState("All");
+  const [counts, setCounts] = useState({});
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadCounts() {
+      try {
+        const data = await apiRequest("/question-counts");
+        if (!cancelled && data.counts) {
+          setCounts(data.counts);
+        }
+      } catch (err) {
+        console.error("Failed to load question counts:", err);
+      }
+    }
+    loadCounts();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!selectedTopic) return;
+    let cancelled = false;
+
+    async function loadQuestions() {
+      setLoading(true);
+      setError("");
+      try {
+        const queryParams = new URLSearchParams({
+          topic: selectedTopic,
+          limit: "500",
+        });
+        if (difficultyFilter !== "All") {
+          queryParams.append("difficulty", difficultyFilter);
+        }
+        const data = await apiRequest(`/questions?${queryParams.toString()}`);
+        if (!cancelled) {
+          setQuestions(data.questions || []);
+        }
+      } catch (err) {
+        if (!cancelled) setError(err.message || "Failed to load questions.");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    loadQuestions();
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedTopic, difficultyFilter]);
+
+  if (selectedTopic) {
+    const topicCounts = counts[selectedTopic] || { Easy: 0, Medium: 0, Hard: 0 };
+    const totalInTopic = (topicCounts.Easy || 0) + (topicCounts.Medium || 0) + (topicCounts.Hard || 0);
+    const Icon = TOPIC_ICONS[selectedTopic] || BookOpen;
+
+    return (
+      <section>
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => {
+                setSelectedTopic(null);
+                setDifficultyFilter("All");
+              }}
+              className="flex items-center gap-1.5 rounded-xl border border-white/[0.08] bg-surface px-3 py-2 text-xs font-medium text-zinc-300 transition hover:border-white/20 hover:text-white"
+            >
+              <ArrowLeft size={14} />
+              <span>All Topics</span>
+            </button>
+            <div className="flex items-center gap-2">
+              <div className="rounded-lg bg-purple-500/10 p-2 text-purple-300">
+                <Icon size={18} />
+              </div>
+              <div>
+                <h2 className="text-xl font-semibold tracking-tight text-white">
+                  {selectedTopic}
+                </h2>
+                <p className="text-xs text-zinc-400">
+                  {totalInTopic} total question{totalInTopic === 1 ? "" : "s"} in library
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <div className="flex rounded-xl border border-white/[0.08] bg-surface p-1">
+              {["All", "Easy", "Medium", "Hard"].map((diff) => (
+                <button
+                  key={diff}
+                  onClick={() => setDifficultyFilter(diff)}
+                  className={`rounded-lg px-2.5 py-1 text-xs font-medium transition ${
+                    difficultyFilter === diff
+                      ? "bg-purple-600 text-white"
+                      : "text-zinc-400 hover:text-white"
+                  }`}
+                >
+                  {diff}
+                </button>
+              ))}
+            </div>
+
+            <button
+              onClick={() => onStartPractice(selectedTopic)}
+              className="flex items-center gap-2 rounded-xl bg-purple-600 px-4 py-2 text-xs font-medium text-white transition hover:bg-purple-500"
+            >
+              <Play size={13} />
+              <span>Practice This Topic</span>
+            </button>
+          </div>
+        </div>
+
+        {error && <ErrorNotice message={error} />}
+
+        {loading ? (
+          <div className="flex items-center justify-center py-20 text-zinc-500">
+            <LoaderCircle size={24} className="animate-spin text-purple-400" />
+            <span className="ml-2 text-xs">Loading questions...</span>
+          </div>
+        ) : questions.length === 0 ? (
+          <EmptyState
+            icon={BookOpen}
+            title={`No questions found for ${selectedTopic}`}
+            description={
+              difficultyFilter !== "All"
+                ? `There are no ${difficultyFilter} questions currently in this category. Try switching the difficulty filter to 'All'.`
+                : "This category currently has zero questions. Questions will be populated here when available."
+            }
+          />
+        ) : (
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center justify-between text-xs text-zinc-400 pb-1">
+              <span>Showing {questions.length} question{questions.length === 1 ? "" : "s"}</span>
+            </div>
+            {questions.map((q, idx) => {
+              const diffColors = {
+                Easy: "border-emerald-500/20 bg-emerald-500/10 text-emerald-400",
+                Medium: "border-amber-500/20 bg-amber-500/10 text-amber-400",
+                Hard: "border-red-500/20 bg-red-500/10 text-red-400",
+              }[q.difficulty] || "border-zinc-500/20 bg-zinc-500/10 text-zinc-400";
+
+              return (
+                <div
+                  key={q.question_id || idx}
+                  className="rounded-2xl border border-white/[0.07] bg-surface p-5 transition hover:border-white/[0.13]"
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/[0.04] pb-3 mb-3">
+                    <div className="flex items-center gap-2">
+                      <span className="rounded-md bg-white/[0.05] px-2 py-0.5 font-mono text-[10px] text-zinc-400">
+                        {q.question_id}
+                      </span>
+                      {q.subtopic && q.subtopic !== q.topic && (
+                        <span className="rounded-md bg-purple-500/10 px-2 py-0.5 text-[10px] text-purple-300">
+                          {q.subtopic}
+                        </span>
+                      )}
+                      <span className="rounded-md bg-white/[0.03] px-2 py-0.5 text-[10px] text-zinc-500 uppercase">
+                        {q.question_type || "conceptual"}
+                      </span>
+                    </div>
+                    <span className={`rounded-full border px-2.5 py-0.5 text-[10px] font-medium ${diffColors}`}>
+                      {q.difficulty}
+                    </span>
+                  </div>
+                  <p className="text-sm font-medium leading-relaxed text-zinc-200">
+                    {q.question}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </section>
+    );
+  }
+
   return (
     <section>
       <PageHeading
         title="Question Bank"
-        description="Choose a technical area to start a practice interview."
+        description="Browse technical questions across all 16 canonical topic areas."
       />
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {topics.map((topic) => {
           const Icon = TOPIC_ICONS[topic] || BookOpen;
+          const topicCounts = counts[topic] || { Easy: 0, Medium: 0, Hard: 0 };
+          const totalInTopic = (topicCounts.Easy || 0) + (topicCounts.Medium || 0) + (topicCounts.Hard || 0);
 
           return (
             <button
               key={topic}
-              onClick={() => onSelect(topic)}
-              className="flex items-center gap-4 rounded-2xl border border-white/[0.07] bg-surface p-5 text-left transition hover:border-purple-400/30"
+              onClick={() => setSelectedTopic(topic)}
+              className="group flex flex-col justify-between rounded-2xl border border-white/[0.07] bg-surface p-5 text-left transition hover:border-purple-400/40 hover:bg-surface/80"
             >
-              <div className="rounded-xl bg-purple-500/10 p-3 text-purple-300">
-                <Icon size={21} />
+              <div className="flex items-start justify-between">
+                <div className="rounded-xl bg-purple-500/10 p-3 text-purple-300 transition group-hover:scale-105 group-hover:bg-purple-500/20">
+                  <Icon size={20} />
+                </div>
+                <ArrowRight size={15} className="text-zinc-600 transition group-hover:translate-x-0.5 group-hover:text-purple-300" />
               </div>
-              <div className="flex-1">
-                <p className="text-sm font-medium">{topic}</p>
+              <div className="mt-4">
+                <p className="text-sm font-semibold text-zinc-100">{topic}</p>
                 <p className="mt-1 text-xs text-zinc-500">
-                  Select topic to practice
+                  {totalInTopic} question{totalInTopic === 1 ? "" : "s"}
                 </p>
+                <div className="mt-3 flex items-center gap-1.5 text-[10px] text-zinc-400">
+                  <span className="rounded bg-white/[0.04] px-1.5 py-0.5">E: {topicCounts.Easy || 0}</span>
+                  <span className="rounded bg-white/[0.04] px-1.5 py-0.5">M: {topicCounts.Medium || 0}</span>
+                  <span className="rounded bg-white/[0.04] px-1.5 py-0.5">H: {topicCounts.Hard || 0}</span>
+                </div>
               </div>
-              <ArrowRight size={16} className="text-zinc-600" />
             </button>
           );
         })}
