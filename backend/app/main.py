@@ -76,21 +76,24 @@ app = FastAPI(
 # ---------------------------------------------------------
 #
 # Vite's default development URL is http://localhost:5173.
-# CORS allows browser requests from the React frontend.
-# The API does not require credentials or authentication yet.
+# CORS_ALLOWED_ORIGINS env variable can supply CloudFront or custom domains.
+import os
 
-allowed_origins = [
+default_origins = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
 ]
+env_origins = os.getenv("CORS_ALLOWED_ORIGINS")
+allowed_origins = [o.strip() for o in env_origins.split(",") if o.strip()] if env_origins else default_origins
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=allowed_origins,
-    allow_credentials=False,
+    allow_origins=allowed_origins if allowed_origins != ["*"] else ["*"],
+    allow_credentials=True,
     allow_methods=["GET", "POST", "OPTIONS"],
-    allow_headers=["Content-Type", "Authorization"],
+    allow_headers=["*"],
 )
+
 
 
 # ---------------------------------------------------------
